@@ -1,4 +1,5 @@
 {{- if .Values.rbac.create -}}
+{{- $k8sPlatform := include "frrk8s.k8sPlatform" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -70,4 +71,88 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "frrk8s.serviceAccountName" . }}
-{{ end -}}
+{{- if and ( eq $k8sPlatform "openshift" ) .Values.frrk8s.serviceAccount.create  }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "frrk8s.fullname" . }}-controller-os
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "frrk8s.labels" . | nindent 4 }}
+rules:
+- apiGroups:
+  - security.openshift.io
+  resourceNames:
+  - {{ include "frrk8s.fullname" . }}-controller-os
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "frrk8s.fullname" . }}-controller-os
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "frrk8s.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "frrk8s.fullname" . }}-controller-os
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "frrk8s.serviceAccountName" . }}
+
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: {{ include "frrk8s.fullname" . }}-controller-os
+  labels:
+    {{- include "frrk8s.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/description: 'Permissions essential to run FRR K8s Router'
+    "helm.sh/hook": pre-install, post-delete
+priority: 50
+allowHostDirVolumePlugin: true
+allowHostIPC: true
+allowHostNetwork: true
+allowHostPID: true
+allowHostPorts: true
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: true
+allowedCapabilities:
+- '*'
+allowedUnsafeSysctls:
+- '*'
+defaultAddCapabilities: null
+fsGroup:
+  type: RunAsAny
+groups:
+- system:nodes
+priority: null
+readOnlyRootFilesystem: false
+requiredDropCapabilities: null
+runAsUser:
+  type: RunAsAny
+seLinuxContext:
+  type: RunAsAny
+seccompProfiles:
+- '*'
+supplementalGroups:
+  type: RunAsAny
+users:
+- system:admin
+- system:serviceaccount:openshift-infra:build-controller
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- ephemeral
+- projected
+- secret
+- hostPath
+{{- end }}
+{{- end -}}

@@ -120,6 +120,17 @@ frrk8s:
       # cpu: 100m
       # memory: 100Mi
   nodeSelector: {}
+  matchExpressions: {}
+    ## Typical match expression to exclude control-plane nodes and only run on
+    ## worker nodes, any combination of these expressions can be used.
+    # nodeSelectorTerms:
+    # - matchExpressions:
+    #   - key: node-role.kubernetes.io/control-plane
+    #     operator: DoesNotExist
+    #   - key: node-role.kubernetes.io/master
+    #     operator: DoesNotExist
+    #   - key: node-role.kubernetes.io/worker
+    #     operator: Exist
   tolerations: []
   priorityClassName: ""
   affinity: {}
